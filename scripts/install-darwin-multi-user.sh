@@ -29,6 +29,57 @@ else
     should_create_volume() { return 1; }
 fi
 
+is_arm(){
+    [[ "$(/usr/bin/uname -m)" =~ arm64|aarch64 ]]
+}
+
+readonly EXPECTED_ROSETTA_ARTIFACT=\
+    "/Library/Apple/System/Library/LaunchDaemons/com.apple.oahd.plist"
+
+rosetta_installed(){
+    [[ -f "$EXPECTED_ROSETTA_ARTIFACT" ]]
+}
+
+install_rosetta(){
+    # TODO: debate --agree-to-license;
+    # I gather they'll be prompted at terminal if we don't do this
+    # we could:
+    # - always --agree-to-license
+    # - only --agree-to-license if headless?
+    # - always use --agree-to-license, but wrap it in a message and
+    #   a mandatory password-prompt?
+    if _sudo "to install Rosetta 2" \
+        softwareupdate --install-rosetta --agree-to-license; then
+        ok "successfully installed Rosetta 2 "
+    else
+        failure "failed to install Rosetta 2"
+    fi
+
+    local wait_increment=5
+    # TODO: debate retry/resiliency measures and failure cases
+    # I could also imagine doing something like
+    for try in {1..3}; do
+        if _sudo "to install Rosetta 2" \
+            softwareupdate --install-rosetta --agree-to-license; then
+            ok "successfully installed Rosetta 2 "
+            break
+        else
+            local wait_time=((wait_increment * try))
+            warning <<EOF
+failed to install Rosetta 2 (attempt $try of 3)
+I'll try again in $wait_time seconds.
+EOF
+            sleep $wait_time
+        fi
+    fi
+}
+
+if is_arm && ! rosetta_installed; then
+    should_install_rosetta(){ return 0; }
+else
+    should_install_rosetta(){ return 1; }
+fi
+
 # shellcheck source=./create-darwin-volume.sh
 . "$EXTRACTED_NIX_PATH/create-darwin-volume.sh" "no-main"
 
@@ -193,6 +244,11 @@ poly_create_build_user() {
 }
 
 poly_prepare_to_install() {
+    if should_install_rosetta; then
+        task "Installing Rosetta 2"
+        # TODO: explain why?
+        install_rosetta
+    fi
     if should_create_volume; then
         header "Preparing a Nix volume"
         # intentional indent below to match task indent

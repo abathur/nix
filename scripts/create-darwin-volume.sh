@@ -587,6 +587,7 @@ EOF
         if ! headless && (( NIX_VOLUME_DO_ENCRYPT == 1 )); then
             if ui_confirm "Should I encrypt it and add the decryption key to your keychain?"; then
                 encrypt_volume "$volume_uuid" "$NIX_VOLUME_LABEL"
+                NIX_VOLUME_DO_ENCRYPT=0
             else
                 NIX_VOLUME_DO_ENCRYPT=0
                 reminder "FileVault is on, but your $NIX_VOLUME_LABEL volume isn't encrypted."
@@ -673,6 +674,7 @@ encrypt_volume() {
     # of operations for creating the volume and then baking its uuid into
     # other artifacts; not as well-trod wrt to potential errors, race
     # conditions, etc.
+
     /usr/sbin/diskutil mount "$volume_label"
 
     password="$(/usr/bin/xxd -l 32 -p -c 256 /dev/random)"

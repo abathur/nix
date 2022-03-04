@@ -10,7 +10,7 @@ jobs:
     needs: [check_cachix]
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -64,7 +64,7 @@ jobs:
     if: github.event_name == 'push' && needs.check_cachix.outputs.secret == 'true'
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2.4.0

@@ -111,9 +111,18 @@ mkdir -p "$unpack"
 tar -xJf "$tarball" -C "$unpack" || oops "failed to unpack '$url'"
 
 script=$(echo "$unpack"/*/install)
+interpreter=$(echo "$unpack"/*/store/*-bash-5*/bin/bash)
 
 [ -e "$script" ] || oops "installation script is missing from the binary tarball!"
 export INVOKED_FROM_INSTALL_IN=1
-"$script" "$@"
+export PATH="$(printf '%s:' "$unpack"/*/store/*/bin)$(getconf PATH)"
+export LD_LIBRARY_PATH="$(printf '%s:' "$unpack"/*/store/*/lib)${LD_LIBRARY_PATH}"
+echo "WHO IS rsync=$(which rsync) interp=$interpreter"
+echo 1
+ls -la $interpreter
+echo 2
+ls -la $(which -a bash)
+echo 3
+"$interpreter" "$script" "$@"
 
 } # End of wrapping

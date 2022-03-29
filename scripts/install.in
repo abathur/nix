@@ -110,19 +110,23 @@ unpack=$tmpDir/unpack
 mkdir -p "$unpack"
 tar -xJf "$tarball" -C "$unpack" || oops "failed to unpack '$url'"
 
-script=$(echo "$unpack"/*/install)
-interpreter=$(echo "$unpack"/*/store/*-bash-5*/bin/bash)
+# echo 1
+# find $unpack/
 
-[ -e "$script" ] || oops "installation script is missing from the binary tarball!"
+ln -s "$unpack"/*/store/*-bash-5*/bin/bash "$unpack/bash"
+ln -s "$unpack"/*/ "$unpack/nix"
+ln -s /etc "$unpack/etc"
+
+# echo 2
+# find $unpack/nix/
+
+script="/nix/install"
+interpreter=/nix/bash
+
+# [ -e "$unpack$script" ] || oops "installation script is missing from the binary tarball!"
 export INVOKED_FROM_INSTALL_IN=1
-export PATH="$(printf '%s:' "$unpack"/*/store/*/bin)$(getconf PATH)"
-export LD_LIBRARY_PATH="$(printf '%s:' "$unpack"/*/store/*/lib)${LD_LIBRARY_PATH}"
-echo "WHO IS rsync=$(which rsync) interp=$interpreter"
-echo 1
-ls -la $interpreter
-echo 2
-ls -la $(which -a bash)
-echo 3
-"$interpreter" "$script" "$@"
+
+# export LD_LIBRARY_PATH="$(printf '%s:' "$unpack"/*/store/*/lib)${LD_LIBRARY_PATH}"
+sudo SHELL="$interpreter" chroot "$unpack/" "$script" "$@"
 
 } # End of wrapping

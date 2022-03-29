@@ -3,6 +3,9 @@
 set -eu
 set -o pipefail
 
+export PATH="$(printf '%s:' /nix/store/*/bin)$(getconf PATH)"
+echo "NEWPATH=$PATH"
+
 # Sourced from:
 # - https://github.com/LnL7/nix-darwin/blob/8c29d0985d74b4a990238497c47a2542a5616b3c/bootstrap.sh
 # - https://gist.github.com/expipiplus1/e571ce88c608a1e83547c918591b149f/ac504c6c1b96e65505fbda437a28ce563408ecb0

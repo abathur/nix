@@ -210,7 +210,7 @@
       binaryTarball = buildPackages: nix: pkgs:
         let
           inherit (pkgs) cacert;
-          installerClosureInfo = buildPackages.closureInfo { rootPaths = [ nix cacert pkgs.pkgsStatic.rsync pkgs.pkgsStatic.bash_5 ]; };
+          installerClosureInfo = buildPackages.closureInfo { rootPaths = [ nix cacert pkgs.rsync pkgs.bash_5 ]; };
         in
 
         buildPackages.runCommand "nix-binary-tarball-${version}"

@@ -21,7 +21,7 @@
       linuxSystems = linux64BitSystems ++ [ "i686-linux" ];
       systems = linuxSystems ++ [ "x86_64-darwin" "aarch64-darwin" ];
 
-      crossSystems = [ "armv6l-linux" "armv7l-linux" ];
+      crossSystems = [ ];
 
       stdenvs = [ "gccStdenv" "clangStdenv" "clang11Stdenv" "stdenv" ];
 
@@ -210,11 +210,12 @@
       binaryTarball = buildPackages: nix: pkgs:
         let
           inherit (pkgs) cacert;
-          installerClosureInfo = buildPackages.closureInfo { rootPaths = [ nix cacert pkgs.pkgsStatic.rsync pkgs.pkgsStatic.bash_5 ]; };
+          installerClosureInfo = buildPackages.closureInfo { rootPaths = [ nix cacert pkgs.rsync pkgs.bash_5 ]; };
         in
 
         buildPackages.runCommand "nix-binary-tarball-${version}"
           { #nativeBuildInputs = lib.optional (system != "aarch64-linux") shellcheck;
+            nativeBuildInputs = [ pkgs.xorriso ];
             meta.description = "Distribution-independent Nix bootstrap binaries for ${pkgs.system}";
           }
           ''
@@ -262,6 +263,8 @@
             fn=$out/$dir.tar.xz
             mkdir -p $out/nix-support
             echo "file binary-dist $fn" >> $out/nix-support/hydra-build-products
+            # xorriso -outdev $TMPDIR/store-seed.iso -path_list ${installerClosureInfo}/store-paths -volid "nix seed"
+            xorriso -outdev $TMPDIR/store-seed.iso -volid "nix seed" -map_l /nix / $(cat ${installerClosureInfo}/store-paths)
             tar cvfJ $fn \
               --owner=0 --group=0 --mode=u+rw,uga+r \
               --absolute-names \
@@ -276,7 +279,7 @@
               $TMPDIR/install-systemd-multi-user.sh \
               $TMPDIR/install-multi-user \
               $TMPDIR/reginfo \
-              $(cat ${installerClosureInfo}/store-paths)
+              $TMPDIR/store-seed.iso
           '';
 
       overlayFor = getStdenv: final: prev:
@@ -443,8 +446,8 @@
         # to https://nixos.org/nix/install. It downloads the binary
         # tarball for the user's system and calls the second half of the
         # installation script.
-        installerScript = installScriptFor [ "x86_64-linux" "i686-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" "armv6l-linux" "armv7l-linux" ];
-        installerScriptForGHA = installScriptFor [ "x86_64-linux" "armv6l-linux" "armv7l-linux"];
+        installerScript = installScriptFor [ "x86_64-linux" ];
+        installerScriptForGHA = installScriptFor [ "x86_64-linux" ];
 
         # docker image with Nix inside
         dockerImage = nixpkgs.lib.genAttrs linux64BitSystems (system: self.packages.${system}.dockerImage);

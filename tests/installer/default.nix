@@ -43,14 +43,14 @@ let
   images = {
 
     /*
-    "ubuntu-14-04" = {
+      "ubuntu-14-04" = {
       image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/ubuntu/boxes/trusty64/versions/20190514.0.0/providers/virtualbox.box";
-        hash = "sha256-iUUXyRY8iW7DGirb0zwGgf1fRbLA7wimTJKgP7l/OQ8=";
+      url = "https://app.vagrantup.com/ubuntu/boxes/trusty64/versions/20190514.0.0/providers/virtualbox.box";
+      hash = "sha256-iUUXyRY8iW7DGirb0zwGgf1fRbLA7wimTJKgP7l/OQ8=";
       };
       rootDisk = "box-disk1.vmdk";
       system = "x86_64-linux";
-    };
+      };
     */
 
     "ubuntu-16-04" = {
@@ -84,14 +84,14 @@ let
     # Currently fails with 'error while loading shared libraries:
     # libsodium.so.23: cannot stat shared object: Invalid argument'.
     /*
-    "rhel-6" = {
+      "rhel-6" = {
       image = import <nix/fetchurl.nix> {
-        url = "https://app.vagrantup.com/generic/boxes/rhel6/versions/4.1.12/providers/libvirt.box";
-        hash = "sha256-QwzbvRoRRGqUCQptM7X/InRWFSP2sqwRt2HaaO6zBGM=";
+      url = "https://app.vagrantup.com/generic/boxes/rhel6/versions/4.1.12/providers/libvirt.box";
+      hash = "sha256-QwzbvRoRRGqUCQptM7X/InRWFSP2sqwRt2HaaO6zBGM=";
       };
       rootDisk = "box.img";
       system = "x86_64-linux";
-    };
+      };
     */
 
     "rhel-7" = {
@@ -131,7 +131,8 @@ let
     with nixpkgsFor.${image.system}.native;
     runCommand
       "installer-test-${imageName}-${testName}"
-      { buildInputs = [ qemu_kvm openssh ];
+      {
+        buildInputs = [ qemu_kvm openssh ];
         image = image.image;
         postBoot = image.postBoot or "";
         installScript = installScripts.${testName}.script;
@@ -230,15 +231,40 @@ let
           [[ \$(nix-instantiate --eval --expr 'builtins.readFile <myChannel/someFile>') = '"someContent"' ]]
         EOF
 
+        echo "Running installer again to test for idempotency..."
+        $ssh "set -eux; $installScript"
+
+        echo "Testing Nix installation..."
+        $ssh <<EOF
+          set -ex
+
+          # FIXME: get rid of this; ideally ssh should just work.
+          source ~/.bash_profile || true
+          source ~/.bash_login || true
+          source ~/.profile || true
+          source /etc/bashrc || true
+
+          nix-env --version
+          nix --extra-experimental-features nix-command store ping
+
+          out=\$(nix-build --no-substitute -E 'derivation { name = "foo"; system = "x86_64-linux"; builder = "/bin/sh"; args = ["-c" "echo foobar > \$out"]; }')
+          [[ \$(cat \$out) = foobar ]]
+        EOF
+
         echo "Done!"
         touch $out
       '';
 
 in
 
-builtins.mapAttrs (imageName: image:
-  { ${image.system} = builtins.mapAttrs (testName: test:
-      makeTest imageName testName
-    ) installScripts;
-  }
-) images
+builtins.mapAttrs
+  (imageName: image:
+    {
+      ${image.system} = builtins.mapAttrs
+        (testName: test:
+          makeTest imageName testName
+        )
+        installScripts;
+    }
+  )
+  images
